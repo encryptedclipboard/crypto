@@ -2,7 +2,7 @@
   "name": "@encryptedclipboard/crypto",
   "version": "1.0.2",
   "description": "Unified E2E encryption logic library",
-  "author": "Encrypted Clipboard <hello@encryptedclipboard.com>",
+  "author": "Encrypted Clipboard Manager <oss@encryptedclipboard.com>",
   "license": "Apache-2.0",
   "homepage": "https://github.com/encryptedclipboard/crypto",
   "repository": {
