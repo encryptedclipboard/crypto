@@ -9,8 +9,16 @@
     "type": "git",
     "url": "git+https://github.com/encryptedclipboard/crypto.git"
   },
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/cjs/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js",
+      "types": "./dist/cjs/index.d.ts"
+    }
+  },
   "files": [
     "dist",
     "README.md",
@@ -32,7 +40,9 @@
     "encrypted-clipboard-manager"
   ],
   "scripts": {
-    "build": "tsc",
+    "build:cjs": "tsc",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "build": "rm -rf dist && bun run build:cjs && bun run build:esm",
     "test": "bun test",
     "typecheck": "tsc --noEmit"
   },

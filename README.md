@@ -109,13 +109,22 @@ const originalPassword = await CryptoEngine.decryptPasswordWithPin(
 - **Salt Length**: 256 bits (32 bytes)
 - **IV Length**: 96 bits (12 bytes)
 
-## 🧪 Testing
+## 🛠 Development
 
-The library is fully covered by unit tests using Bun.
+If you want to contribute or verify the library logic locally:
 
-```bash
-bun test
-```
+1. **Clone the repo**:
+   ```bash
+   git clone https://github.com/encryptedclipboard/crypto.git
+   ```
+2. **Install dependencies**:
+   ```bash
+   bun install
+   ```
+3. **Run tests**:
+   ```bash
+   bun test
+   ```
 
 ## 📜 License
 
