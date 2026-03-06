@@ -2,7 +2,7 @@
 
 A professional-grade, unified end-to-end (E2E) encryption logic library built for the **Encrypted Clipboard Manager** ecosystem.
 
-This package is the core encryption engine of the [Encrypted Clipboard Manager](https://encryptedclipboard.app) extension, created and maintained by [Nowshad Hossain Rahat](https://x.com/nowshadrahat) and the [encryptedclipboard](https://github.com/encryptedclipboard) organization.
+This package is the core encryption engine of the [Encrypted Clipboard Manager](https://encryptedclipboard.app) extension, created and maintained by [Nowshad Hossain Rahat](https://x.com/nhrdev) and the [encryptedclipboard](https://github.com/encryptedclipboard) organization.
 
 - **Website**: [encryptedclipboard.app](https://encryptedclipboard.app)
 - **X/Twitter**: [@EncryptedClip](https://x.com/@EncryptedClip)
@@ -26,7 +26,11 @@ bun install @encryptedclipboard/crypto
 
 ## 🛠 Usage
 
-### Basic Encryption & Decryption
+This package supports both **ES Modules (ESM)** and **CommonJS (CJS)**.
+
+### 1. Modern ESM / TypeScript (Recommended)
+
+Works in modern Node.js, Vite, Nuxt, React, Svelte, etc.
 
 ```typescript
 import { CryptoEngine } from "@encryptedclipboard/crypto";
@@ -40,6 +44,36 @@ const encrypted = await CryptoEngine.encryptData(sensibleData, masterPassword);
 // Decrypt
 const decrypted = await CryptoEngine.decryptData(encrypted, masterPassword);
 console.log(decrypted); // { secret: "This is a secret message" }
+```
+
+### 2. Node.js CommonJS
+
+Works in older Node.js environments or projects using `require`.
+
+```javascript
+const { CryptoEngine } = require("@encryptedclipboard/crypto");
+
+// Usage is the same (Async/Await)
+(async () => {
+  const encrypted = await CryptoEngine.encryptData({ msg: "Hi" }, "pass");
+  console.log(encrypted);
+})();
+```
+
+### 3. Direct Browser (via CDN)
+
+Since this library has **zero dependencies** and uses the native Web Crypto API, you can use it directly in the browser without a build step.
+
+```html
+<script type="module">
+  import { CryptoEngine } from "https://esm.sh/@encryptedclipboard/crypto";
+
+  const encrypted = await CryptoEngine.encryptData(
+    "Hello world",
+    "my-password"
+  );
+  console.log("Encrypted:", encrypted);
+</script>
 ```
 
 ### Password Strength Validation
