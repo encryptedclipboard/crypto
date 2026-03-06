@@ -1,0 +1,41 @@
+{
+  "name": "@encryptedclipboard/crypto",
+  "version": "1.0.1",
+  "description": "Unified E2E encryption logic library",
+  "author": "Encrypted Clipboard <hello@encryptedclipboard.com>",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/encryptedclipboard/crypto",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/encryptedclipboard/crypto.git"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "encryption",
+    "decryption",
+    "crypto",
+    "e2e",
+    "end-to-end-encryption",
+    "aes-gcm",
+    "pbkdf2",
+    "web-crypto",
+    "security",
+    "encrypted-clipboard-manager"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.0.0"
+  }
+}
