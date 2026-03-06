@@ -1,6 +1,6 @@
 {
   "name": "@encryptedclipboard/crypto",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Unified E2E encryption logic library",
   "author": "Encrypted Clipboard <hello@encryptedclipboard.com>",
   "license": "Apache-2.0",
