@@ -1,10 +1,13 @@
 import type {
   CryptoEngineOptions,
   EncryptedData,
-  PasswordStrength
+  PasswordStrength,
+  BatchOptions
 } from "./types";
+import { pMap } from "./utils";
 
 export class CryptoEngine {
+  private static readonly ALGORITHM = "AES-GCM";
   private static readonly PBKDF2_ITERATIONS = 600000;
   private static readonly SALT_LENGTH = 32;
   private static readonly IV_LENGTH = 12;
@@ -135,6 +138,165 @@ export class CryptoEngine {
   ): Promise<EncryptedData> {
     return CryptoEngine.encryptData(data, masterPassword, this.options.iterations);
   }
+
+  // =========================================================================
+  // BATCH ENCRYPTION / DECRYPTION LOGIC
+  // =========================================================================
+
+  /**
+   * Encrypts a batch of items concurrently.
+   * Generates a single salt and derives a single key for the entire batch to maximize performance.
+   * 
+   * @param items Array of data items to encrypt
+   * @param masterPassword The password to encrypt the data with
+   * @param iterations (Optional) The number of PBKDF2 iterations to use
+   * @param options (Optional) Batch processing options (e.g., concurrency limit)
+   */
+  static async encryptBatch(
+    items: unknown[],
+    masterPassword: string,
+    iterations: number = CryptoEngine.PBKDF2_ITERATIONS,
+    options?: BatchOptions
+  ): Promise<EncryptedData[]> {
+    if (!items || items.length === 0) return [];
+
+    const salt = crypto.getRandomValues(
+      new Uint8Array(CryptoEngine.SALT_LENGTH)
+    );
+    const key = await CryptoEngine.deriveKeyFromPassword(
+      masterPassword,
+      salt,
+      iterations
+    );
+
+    return pMap(
+      items,
+      async (item) => {
+        const iv = crypto.getRandomValues(
+          new Uint8Array(CryptoEngine.IV_LENGTH)
+        );
+
+        const encryptedBuffer = await crypto.subtle.encrypt(
+          { name: CryptoEngine.ALGORITHM, iv },
+          key,
+          new TextEncoder().encode(JSON.stringify(item))
+        );
+
+        const authTag = encryptedBuffer.slice(-16);
+        const ciphertext = encryptedBuffer.slice(0, -16);
+
+        return {
+          ciphertext: Buffer.from(ciphertext).toString("base64"),
+          iv: Buffer.from(iv).toString("base64"),
+          salt: Buffer.from(salt).toString("base64"),
+          authTag: Buffer.from(authTag).toString("base64"),
+          iterations
+        };
+      },
+      options
+    );
+  }
+
+  async encryptBatch(
+    items: unknown[],
+    masterPassword: string,
+    options?: BatchOptions
+  ): Promise<EncryptedData[]> {
+    return CryptoEngine.encryptBatch(items, masterPassword, this.options.iterations, options);
+  }
+
+  /**
+   * Decrypts a batch of items concurrently.
+   * Groups items by salt/iterations to derive the key only once per unique group.
+   * 
+   * @param encryptedItems Array of EncryptedData items
+   * @param masterPassword The password used for encryption
+   * @param options (Optional) Batch processing options (e.g., concurrency limit)
+   */
+  static async decryptBatch<T = unknown>(
+    encryptedItems: EncryptedData[],
+    masterPassword: string,
+    options?: BatchOptions
+  ): Promise<T[]> {
+    if (!encryptedItems || encryptedItems.length === 0) return [];
+
+    // Group items by salt and iterations to minimize key derivations
+    // We use a string key: `${saltBase64}_${iterations}`
+    const groups = new Map<string, { keyPromise: Promise<CryptoKey>; items: { item: EncryptedData, index: number }[] }>();
+
+    for (let i = 0; i < encryptedItems.length; i++) {
+      const item = encryptedItems[i];
+      const iterations = item.iterations || CryptoEngine.PBKDF2_ITERATIONS;
+      const groupKey = `${item.salt}_${iterations}`;
+
+      if (!groups.has(groupKey)) {
+        const saltBuffer = Buffer.from(item.salt, "base64");
+        // Start promise immediately but store it
+        const keyPromise = CryptoEngine.deriveKeyFromPassword(masterPassword, saltBuffer, iterations);
+        groups.set(groupKey, { keyPromise, items: [] });
+      }
+
+      groups.get(groupKey)!.items.push({ item, index: i });
+    }
+
+    const results: T[] = new Array(encryptedItems.length);
+
+    // Process each group concurrently using pMap if there are many items per group
+    await pMap(
+      Array.from(groups.values()),
+      async (group) => {
+        const key = await group.keyPromise;
+        const groupResults = await pMap(
+          group.items,
+          async ({ item, index }) => {
+            const ivBuffer = Buffer.from(item.iv, "base64");
+            const ciphertextBuffer = Buffer.from(item.ciphertext, "base64");
+            const authTagBuffer = Buffer.from(item.authTag, "base64");
+
+            // Reconstruct the encrypted payload (ciphertext + authTag)
+            const encryptedDataBuffer = new Uint8Array(
+              ciphertextBuffer.length + authTagBuffer.length
+            );
+            encryptedDataBuffer.set(ciphertextBuffer, 0);
+            encryptedDataBuffer.set(authTagBuffer, ciphertextBuffer.length);
+
+            try {
+              const decryptedBuffer = await crypto.subtle.decrypt(
+                { name: CryptoEngine.ALGORITHM, iv: ivBuffer },
+                key,
+                encryptedDataBuffer
+              );
+              return { index, value: JSON.parse(new TextDecoder().decode(decryptedBuffer)) as T };
+            } catch (error) {
+              throw new Error(`Failed to decrypt data at index ${index}. Incorrect password or corrupted data.`);
+            }
+          },
+          options
+        );
+        
+        // Place results back in original order
+        for (const res of groupResults) {
+          results[res.index] = res.value;
+        }
+      },
+      // We run groups sequentially or concurrently, but typically there's only 1 group
+      { concurrency: options?.concurrency ?? Infinity }
+    );
+
+    return results;
+  }
+
+  async decryptBatch<T = unknown>(
+    encryptedItems: EncryptedData[],
+    masterPassword: string,
+    options?: BatchOptions
+  ): Promise<T[]> {
+    return CryptoEngine.decryptBatch(encryptedItems, masterPassword, options);
+  }
+
+  // =========================================================================
+  // SINGLE ITEM ENCRYPTION / DECRYPTION LOGIC
+  // =========================================================================
 
   static async decryptData<T = unknown>(
     encryptedData: EncryptedData,

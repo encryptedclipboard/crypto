@@ -1,17 +1,18 @@
 {
   "name": "@encryptedclipboard/crypto",
   "version": "1.0.3",
-  "description": "Unified E2E encryption logic library",
   "author": "Encrypted Clipboard Manager <oss@encryptedclipboard.com>",
-  "license": "Apache-2.0",
-  "homepage": "https://github.com/encryptedclipboard/crypto",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/encryptedclipboard/crypto.git"
   },
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
-  "types": "./dist/cjs/index.d.ts",
+  "devDependencies": {
+    "@types/bun": "latest",
+    "bun-types": "^1.3.10",
+    "typescript": "^5.0.0"
+  },
   "exports": {
     ".": {
       "import": "./dist/esm/index.js",
@@ -19,14 +20,13 @@
       "types": "./dist/cjs/index.d.ts"
     }
   },
+  "description": "Unified E2E encryption logic library",
   "files": [
     "dist",
     "README.md",
     "LICENSE"
   ],
-  "publishConfig": {
-    "access": "public"
-  },
+  "homepage": "https://github.com/encryptedclipboard/crypto",
   "keywords": [
     "encryption",
     "decryption",
@@ -39,6 +39,10 @@
     "security",
     "encrypted-clipboard-manager"
   ],
+  "license": "Apache-2.0",
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build:cjs": "tsc",
     "build:esm": "tsc -p tsconfig.esm.json",
@@ -46,9 +50,5 @@
     "test": "bun test",
     "typecheck": "tsc --noEmit"
   },
-  "devDependencies": {
-    "@types/bun": "latest",
-    "bun-types": "^1.3.10",
-    "typescript": "^5.0.0"
-  }
+  "types": "./dist/cjs/index.d.ts"
 }
