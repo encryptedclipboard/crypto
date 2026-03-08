@@ -17,7 +17,8 @@ export class CryptoEngine {
 
   constructor(options: CryptoEngineOptions = {}) {
     this.options = {
-      iterations: options.iterations || CryptoEngine.PBKDF2_ITERATIONS
+      iterations: options.iterations || CryptoEngine.PBKDF2_ITERATIONS,
+      concurrency: options.concurrency || Infinity
     };
   }
 
@@ -199,10 +200,14 @@ export class CryptoEngine {
 
   async encryptBatch(
     items: unknown[],
-    masterPassword: string,
-    options?: BatchOptions
+    masterPassword: string
   ): Promise<EncryptedData[]> {
-    return CryptoEngine.encryptBatch(items, masterPassword, this.options.iterations, options);
+    return CryptoEngine.encryptBatch(
+      items, 
+      masterPassword, 
+      this.options.iterations, 
+      { concurrency: this.options.concurrency }
+    );
   }
 
   /**
@@ -288,10 +293,13 @@ export class CryptoEngine {
 
   async decryptBatch<T = unknown>(
     encryptedItems: EncryptedData[],
-    masterPassword: string,
-    options?: BatchOptions
+    masterPassword: string
   ): Promise<T[]> {
-    return CryptoEngine.decryptBatch(encryptedItems, masterPassword, options);
+    return CryptoEngine.decryptBatch(
+      encryptedItems, 
+      masterPassword, 
+      { concurrency: this.options.concurrency }
+    );
   }
 
   // =========================================================================

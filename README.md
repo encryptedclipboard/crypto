@@ -150,11 +150,11 @@ const decryptedBatch = await CryptoEngine.decryptBatch(
 #### Instance Approach
 
 ```typescript
-const crypto = new CryptoEngine({ iterations: 100000 });
+const crypto = new CryptoEngine({ iterations: 100000, concurrency: 5 });
 const items = [{ id: 1 }, { id: 2 }, { id: 3 }];
 
-const encryptedBatch = await crypto.encryptBatch(items, "master-password", { concurrency: 5 });
-const decryptedBatch = await crypto.decryptBatch(encryptedBatch, "master-password", { concurrency: 5 });
+const encryptedBatch = await crypto.encryptBatch(items, "master-password");
+const decryptedBatch = await crypto.decryptBatch(encryptedBatch, "master-password");
 ```
 
 ### PIN-based Encryption

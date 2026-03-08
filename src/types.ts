@@ -7,7 +7,7 @@ export interface EncryptedData {
   version?: number;
 }
 
-export interface CryptoEngineOptions {
+export interface CryptoEngineOptions extends BatchOptions {
   iterations?: number;
 }
 

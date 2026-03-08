@@ -38,10 +38,10 @@ describe("CryptoEngine Batch Processing", () => {
 
   test("encryptBatch and decryptBatch instance methods", async () => {
     const iterations = 50000;
-    const engine = new CryptoEngine({ iterations });
+    const engine = new CryptoEngine({ iterations, concurrency: 4 });
 
     // Encrypt
-    const encryptedItems = await engine.encryptBatch(items, masterPassword, { concurrency: 4 });
+    const encryptedItems = await engine.encryptBatch(items, masterPassword);
     
     expect(encryptedItems.length).toBe(items.length);
     expect(encryptedItems[0].iterations).toBe(iterations);
