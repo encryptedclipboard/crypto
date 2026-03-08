@@ -1,10 +1,22 @@
-import type { EncryptedData, PasswordStrength } from "./types";
+import type {
+  CryptoEngineOptions,
+  EncryptedData,
+  PasswordStrength
+} from "./types";
 
 export class CryptoEngine {
   private static readonly PBKDF2_ITERATIONS = 600000;
   private static readonly SALT_LENGTH = 32;
   private static readonly IV_LENGTH = 12;
   private static readonly KEY_LENGTH = 256;
+
+  private readonly options: Required<CryptoEngineOptions>;
+
+  constructor(options: CryptoEngineOptions = {}) {
+    this.options = {
+      iterations: options.iterations || CryptoEngine.PBKDF2_ITERATIONS
+    };
+  }
 
   private static arrayBufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
     const bytes =
@@ -38,7 +50,8 @@ export class CryptoEngine {
 
   static async deriveKeyFromPassword(
     password: string,
-    salt: Uint8Array
+    salt: Uint8Array,
+    iterations: number = CryptoEngine.PBKDF2_ITERATIONS
   ): Promise<CryptoKey> {
     const encoder = new TextEncoder();
     const passwordBuffer = encoder.encode(password);
@@ -55,7 +68,7 @@ export class CryptoEngine {
       {
         name: "PBKDF2",
         salt: salt as BufferSource,
-        iterations: this.PBKDF2_ITERATIONS,
+        iterations: iterations,
         hash: "SHA-256"
       },
       keyMaterial,
@@ -67,7 +80,8 @@ export class CryptoEngine {
 
   static async encryptData(
     data: unknown,
-    masterPassword: string
+    masterPassword: string,
+    iterations: number = this.PBKDF2_ITERATIONS
   ): Promise<EncryptedData> {
     if (!masterPassword || masterPassword.length < 8) {
       throw new Error("Master password must be at least 8 characters long.");
@@ -82,7 +96,12 @@ export class CryptoEngine {
 
     const plaintextBytes = new TextEncoder().encode(plaintext);
     const salt = crypto.getRandomValues(new Uint8Array(this.SALT_LENGTH));
-    const key = await this.deriveKeyFromPassword(masterPassword, salt);
+    const key = await this.deriveKeyFromPassword(
+      masterPassword,
+      salt,
+      iterations
+    );
+    
     const iv = crypto.getRandomValues(new Uint8Array(this.IV_LENGTH));
 
     const encryptedBuffer = await crypto.subtle.encrypt(
@@ -105,8 +124,16 @@ export class CryptoEngine {
       iv: this.arrayBufferToBase64(iv),
       salt: this.arrayBufferToBase64(salt),
       authTag: this.arrayBufferToBase64(authTag),
+      iterations,
       version: 1
     };
+  }
+
+  async encryptData(
+    data: unknown,
+    masterPassword: string
+  ): Promise<EncryptedData> {
+    return CryptoEngine.encryptData(data, masterPassword, this.options.iterations);
   }
 
   static async decryptData<T = unknown>(
@@ -126,7 +153,12 @@ export class CryptoEngine {
       this.base64ToArrayBuffer(encryptedData.authTag)
     );
 
-    const key = await this.deriveKeyFromPassword(masterPassword, salt);
+    const iterations = encryptedData.iterations || this.PBKDF2_ITERATIONS;
+    const key = await this.deriveKeyFromPassword(
+      masterPassword,
+      salt,
+      iterations
+    );
 
     const encryptedBuffer = new Uint8Array(ciphertext.length + authTag.length);
     encryptedBuffer.set(ciphertext, 0);
@@ -156,6 +188,13 @@ export class CryptoEngine {
     }
   }
 
+  async decryptData<T = unknown>(
+    encryptedData: EncryptedData,
+    masterPassword: string
+  ): Promise<T> {
+    return CryptoEngine.decryptData<T>(encryptedData, masterPassword);
+  }
+
   static async tryDecrypt(
     encryptedData: EncryptedData,
     candidatePassword: string
@@ -166,6 +205,13 @@ export class CryptoEngine {
     } catch {
       return false;
     }
+  }
+
+  async tryDecrypt(
+    encryptedData: EncryptedData,
+    candidatePassword: string
+  ): Promise<boolean> {
+    return CryptoEngine.tryDecrypt(encryptedData, candidatePassword);
   }
 
   static validatePasswordStrength(password: string): PasswordStrength {
@@ -197,8 +243,9 @@ export class CryptoEngine {
 
   static async encryptPasswordForStorage(
     password: string,
-    storageSalt: Uint8Array
-  ): Promise<{ ciphertext: string; iv: string; authTag: string }> {
+    storageSalt: Uint8Array,
+    iterations: number = this.PBKDF2_ITERATIONS
+  ): Promise<{ ciphertext: string; iv: string; authTag: string; iterations: number }> {
     const saltBytes = new Uint8Array([...storageSalt]);
     const keyMaterial = await crypto.subtle.importKey(
       "raw",
@@ -212,7 +259,7 @@ export class CryptoEngine {
       {
         name: "PBKDF2",
         salt: saltBytes,
-        iterations: this.PBKDF2_ITERATIONS,
+        iterations: iterations,
         hash: "SHA-256"
       },
       keyMaterial,
@@ -242,8 +289,25 @@ export class CryptoEngine {
     return {
       ciphertext: this.arrayBufferToBase64(ciphertext),
       iv: this.arrayBufferToBase64(iv),
-      authTag: this.arrayBufferToBase64(authTag)
+      authTag: this.arrayBufferToBase64(authTag),
+      iterations
     };
+  }
+
+  async encryptPasswordForStorage(
+    password: string,
+    storageSalt: Uint8Array
+  ): Promise<{
+    ciphertext: string;
+    iv: string;
+    authTag: string;
+    iterations: number;
+  }> {
+    return CryptoEngine.encryptPasswordForStorage(
+      password,
+      storageSalt,
+      this.options.iterations
+    );
   }
 
   static async decryptPasswordFromStorage(
@@ -251,6 +315,7 @@ export class CryptoEngine {
       ciphertext: string;
       iv: string;
       authTag: string;
+      iterations?: number;
     },
     storageSalt: Uint8Array
   ): Promise<string> {
@@ -263,11 +328,12 @@ export class CryptoEngine {
       ["deriveKey"]
     );
 
+    const iterations = encrypted.iterations || this.PBKDF2_ITERATIONS;
     const key = await crypto.subtle.deriveKey(
       {
         name: "PBKDF2",
         salt: saltBytes,
-        iterations: this.PBKDF2_ITERATIONS,
+        iterations: iterations,
         hash: "SHA-256"
       },
       keyMaterial,
@@ -303,9 +369,22 @@ export class CryptoEngine {
     }
   }
 
+  async decryptPasswordFromStorage(
+    encrypted: {
+      ciphertext: string;
+      iv: string;
+      authTag: string;
+      iterations?: number;
+    },
+    storageSalt: Uint8Array
+  ): Promise<string> {
+    return CryptoEngine.decryptPasswordFromStorage(encrypted, storageSalt);
+  }
+
   static async encryptPasswordWithPin(
     password: string,
-    pin: string
+    pin: string,
+    iterations: number = this.PBKDF2_ITERATIONS
   ): Promise<EncryptedData> {
     const salt = crypto.getRandomValues(new Uint8Array(this.SALT_LENGTH));
     const pinBuffer = new TextEncoder().encode(pin);
@@ -322,7 +401,7 @@ export class CryptoEngine {
       {
         name: "PBKDF2",
         salt: salt,
-        iterations: this.PBKDF2_ITERATIONS,
+        iterations: iterations,
         hash: "SHA-256"
       },
       keyMaterial,
@@ -354,8 +433,16 @@ export class CryptoEngine {
       iv: this.arrayBufferToBase64(iv),
       salt: this.arrayBufferToBase64(salt),
       authTag: this.arrayBufferToBase64(authTag),
+      iterations,
       version: 1
     };
+  }
+
+  async encryptPasswordWithPin(
+    password: string,
+    pin: string
+  ): Promise<EncryptedData> {
+    return CryptoEngine.encryptPasswordWithPin(password, pin, this.options.iterations);
   }
 
   static async decryptPasswordWithPin(
@@ -378,11 +465,12 @@ export class CryptoEngine {
       ["deriveKey"]
     );
 
+    const iterations = encrypted.iterations || this.PBKDF2_ITERATIONS;
     const key = await crypto.subtle.deriveKey(
       {
         name: "PBKDF2",
         salt: salt,
-        iterations: this.PBKDF2_ITERATIONS,
+        iterations: iterations,
         hash: "SHA-256"
       },
       keyMaterial,
@@ -412,6 +500,13 @@ export class CryptoEngine {
     }
   }
 
+  async decryptPasswordWithPin(
+    encrypted: EncryptedData,
+    pin: string
+  ): Promise<string> {
+    return CryptoEngine.decryptPasswordWithPin(encrypted, pin);
+  }
+
   static async verifyPasswordAgainstData(
     candidatePassword: string,
     encryptedData: EncryptedData
@@ -426,7 +521,13 @@ export class CryptoEngine {
         this.base64ToArrayBuffer(encryptedData.authTag)
       );
 
-      const key = await this.deriveKeyFromPassword(candidatePassword, salt);
+      const iterations = encryptedData.iterations || this.PBKDF2_ITERATIONS;
+
+      const key = await this.deriveKeyFromPassword(
+        candidatePassword,
+        salt,
+        iterations
+      );
 
       const encryptedBuffer = new Uint8Array(
         ciphertext.length + authTag.length
@@ -450,6 +551,16 @@ export class CryptoEngine {
     }
   }
 
+  async verifyPasswordAgainstData(
+    candidatePassword: string,
+    encryptedData: EncryptedData
+  ): Promise<boolean> {
+    return CryptoEngine.verifyPasswordAgainstData(
+      candidatePassword,
+      encryptedData
+    );
+  }
+
   static async verifyPasswordAgainstSamples(
     password: string,
     samples: any[]
@@ -466,6 +577,7 @@ export class CryptoEngine {
         iv: item.encryptionData.iv,
         salt: item.encryptionData.salt,
         authTag: item.encryptionData.authTag,
+        iterations: item.encryptionData.iterations,
         version: item.encryptionData.version || 1
       };
 
@@ -480,5 +592,12 @@ export class CryptoEngine {
     if (attempted === 0) return true;
 
     return false;
+  }
+
+  async verifyPasswordAgainstSamples(
+    password: string,
+    samples: any[]
+  ): Promise<boolean> {
+    return CryptoEngine.verifyPasswordAgainstSamples(password, samples);
   }
 }

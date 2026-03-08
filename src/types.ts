@@ -3,7 +3,12 @@ export interface EncryptedData {
   iv: string;
   salt: string;
   authTag: string;
+  iterations?: number;
   version?: number;
+}
+
+export interface CryptoEngineOptions {
+  iterations?: number;
 }
 
 export interface PasswordStrength {
