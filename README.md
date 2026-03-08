@@ -11,7 +11,8 @@ This package is the core encryption engine of the [Encrypted Clipboard Manager](
 ## 🚀 Features
 
 - **Standardized Encryption**: Uses industry-standard **AES-256-GCM** for high-performance authenticated encryption.
-- **Robust Key Derivation**: Implements **PBKDF2** with **600,000 iterations** and SHA-256 (following modern OWASP recommendations).
+- **Robust Key Derivation**: Implements **PBKDF2** with a default of **600,000 iterations** (OWASP recommendation), customizable based on security vs. performance needs.
+- **Hybrid API**: Seamless support for both static utility methods and pre-configured class instances.
 - **Zero Dependencies**: Built entirely on top of the native **Web Crypto API**, ensuring maximum security and a tiny footprint.
 - **Unified Logic**: Shared between the server, client (web), and browser extension for consistent E2E stability.
 - **Security Utilities**: Includes password strength validation, SHA-256 hashing with pepper support, and PIN-based encryption.
@@ -37,18 +38,30 @@ import { CryptoEngine } from "@encryptedclipboard/crypto";
 
 const masterPassword = "your-strong-master-password";
 const sensibleData = { secret: "This is a secret message" };
+```
 
+#### Static Approach (One-off)
+```typescript
 // Encrypt
 const encrypted = await CryptoEngine.encryptData(sensibleData, masterPassword);
 
 // Decrypt
 const decrypted = await CryptoEngine.decryptData(encrypted, masterPassword);
-console.log(decrypted); // { secret: "This is a secret message" }
+```
+
+#### Instance Approach (Pre-configured)
+```typescript
+const crypto = new CryptoEngine({ iterations: 100000 });
+
+// No need to pass iterations every time
+const encrypted = await crypto.encryptData(sensibleData, masterPassword);
+const decrypted = await crypto.decryptData(encrypted, masterPassword);
 ```
 
 ### 2. Node.js CommonJS
 
 Works in older Node.js environments or projects using `require`.
+#### Static Approach
 
 ```javascript
 const { CryptoEngine } = require("@encryptedclipboard/crypto");
@@ -60,9 +73,22 @@ const { CryptoEngine } = require("@encryptedclipboard/crypto");
 })();
 ```
 
+#### Instance Approach
+
+```javascript
+const { CryptoEngine } = require("@encryptedclipboard/crypto");
+
+(async () => {
+  const crypto = new CryptoEngine({ iterations: 100000 });
+  const encrypted = await crypto.encryptData({ msg: "Hi" }, "pass");
+  console.log(encrypted);
+})();
+```
+
 ### 3. Direct Browser (via CDN)
 
 Since this library has **zero dependencies** and uses the native Web Crypto API, you can use it directly in the browser without a build step.
+#### Static Approach
 
 ```html
 <script type="module">
@@ -72,6 +98,18 @@ Since this library has **zero dependencies** and uses the native Web Crypto API,
     "Hello world",
     "my-password"
   );
+  console.log("Encrypted:", encrypted);
+</script>
+```
+
+#### Instance Approach
+
+```html
+<script type="module">
+  import { CryptoEngine } from "https://esm.sh/@encryptedclipboard/crypto";
+
+  const crypto = new CryptoEngine({ iterations: 100000 });
+  const encrypted = await crypto.encryptData("Hello world", "my-password");
   console.log("Encrypted:", encrypted);
 </script>
 ```
@@ -88,6 +126,8 @@ console.log(assessment.feedback); // Array of suggestions
 
 Useful for local sessions where you want to lock data with a short PIN without re-entering the main password.
 
+#### Static Approach
+
 ```typescript
 const encryptedPassword = await CryptoEngine.encryptPasswordWithPin(
   "master-password",
@@ -99,13 +139,22 @@ const originalPassword = await CryptoEngine.decryptPasswordWithPin(
 );
 ```
 
+#### Instance Approach
+
+```typescript
+const crypto = new CryptoEngine({ iterations: 50000 });
+
+const encryptedPassword = await crypto.encryptPasswordWithPin("master-password", "1234");
+const originalPassword = await crypto.decryptPasswordWithPin(encryptedPassword, "1234");
+```
+
 ## 🔐 Security Specifications
 
 - **Algorithm**: `AES-GCM` (Advanced Encryption Standard - Galois/Counter Mode)
 - **Key Length**: 256 bits
 - **KDF**: `PBKDF2` (Password-Based Key Derivation Function 2)
 - **Hash**: `SHA-256`
-- **Iterations**: 600,000
+- **Iterations**: 600,000 (Default, Customizable)
 - **Salt Length**: 256 bits (32 bytes)
 - **IV Length**: 96 bits (12 bytes)
 
