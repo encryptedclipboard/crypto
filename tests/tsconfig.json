@@ -2,10 +2,11 @@
   "extends": "../tsconfig.json",
   "compilerOptions": {
     "types": [
-      "bun"
+      "bun-types"
     ]
   },
   "include": [
     "**/*.ts"
-  ]
+  ],
+  "exclude": []
 }

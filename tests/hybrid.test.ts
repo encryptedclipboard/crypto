@@ -1,3 +1,4 @@
+/// <reference types="bun" />
 import { expect, test, describe } from "bun:test";
 import { CryptoEngine } from "../src/engine";
 
