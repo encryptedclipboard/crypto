@@ -143,7 +143,20 @@ const encryptedBatch = await CryptoEngine.encryptBatch(
 const decryptedBatch = await CryptoEngine.decryptBatch(
   encryptedBatch, 
   "master-password", 
-  { concurrency: 5 }
+  { concurrency: 5, disableCache: false } // disableCache is false by default
+);
+```
+
+#### Disabling Salt Caching
+
+By default, batch operations generate a single salt/key for the entire batch to maximize performance. If you need each item to have its own unique salt, set `disableCache: true`.
+
+```typescript
+const encryptedBatch = await CryptoEngine.encryptBatch(
+  items, 
+  "master-password", 
+  600000, 
+  { disableCache: true }
 );
 ```
 

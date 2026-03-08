@@ -14,6 +14,8 @@ export interface CryptoEngineOptions extends BatchOptions {
 export interface BatchOptions {
   /** Maximum number of promises to run concurrently. Defaults to Infinity. */
   concurrency?: number;
+  /** Whether to disable salt/key caching for the batch. Defaults to false. */
+  disableCache?: boolean;
 }
 
 export interface PasswordStrength {

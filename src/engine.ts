@@ -18,7 +18,8 @@ export class CryptoEngine {
   constructor(options: CryptoEngineOptions = {}) {
     this.options = {
       iterations: options.iterations || CryptoEngine.PBKDF2_ITERATIONS,
-      concurrency: options.concurrency || Infinity
+      concurrency: options.concurrency || Infinity,
+      disableCache: options.disableCache || false
     };
   }
 
@@ -161,6 +162,14 @@ export class CryptoEngine {
   ): Promise<EncryptedData[]> {
     if (!items || items.length === 0) return [];
 
+    if (options?.disableCache) {
+      return pMap(
+        items,
+        (item) => CryptoEngine.encryptData(item, masterPassword, iterations),
+        options
+      );
+    }
+
     const salt = crypto.getRandomValues(
       new Uint8Array(CryptoEngine.SALT_LENGTH)
     );
@@ -187,10 +196,10 @@ export class CryptoEngine {
         const ciphertext = encryptedBuffer.slice(0, -16);
 
         return {
-          ciphertext: Buffer.from(ciphertext).toString("base64"),
-          iv: Buffer.from(iv).toString("base64"),
-          salt: Buffer.from(salt).toString("base64"),
-          authTag: Buffer.from(authTag).toString("base64"),
+          ciphertext: CryptoEngine.arrayBufferToBase64(ciphertext),
+          iv: CryptoEngine.arrayBufferToBase64(iv),
+          salt: CryptoEngine.arrayBufferToBase64(salt),
+          authTag: CryptoEngine.arrayBufferToBase64(authTag),
           iterations
         };
       },
@@ -206,7 +215,10 @@ export class CryptoEngine {
       items, 
       masterPassword, 
       this.options.iterations, 
-      { concurrency: this.options.concurrency }
+      { 
+        concurrency: this.options.concurrency,
+        disableCache: this.options.disableCache
+      }
     );
   }
 
@@ -225,6 +237,14 @@ export class CryptoEngine {
   ): Promise<T[]> {
     if (!encryptedItems || encryptedItems.length === 0) return [];
 
+    if (options?.disableCache) {
+      return pMap(
+        encryptedItems,
+        (item) => CryptoEngine.decryptData<T>(item, masterPassword),
+        options
+      );
+    }
+
     // Group items by salt and iterations to minimize key derivations
     // We use a string key: `${saltBase64}_${iterations}`
     const groups = new Map<string, { keyPromise: Promise<CryptoKey>; items: { item: EncryptedData, index: number }[] }>();
@@ -235,9 +255,9 @@ export class CryptoEngine {
       const groupKey = `${item.salt}_${iterations}`;
 
       if (!groups.has(groupKey)) {
-        const saltBuffer = Buffer.from(item.salt, "base64");
+        const saltBuffer = CryptoEngine.base64ToArrayBuffer(item.salt);
         // Start promise immediately but store it
-        const keyPromise = CryptoEngine.deriveKeyFromPassword(masterPassword, saltBuffer, iterations);
+        const keyPromise = CryptoEngine.deriveKeyFromPassword(masterPassword, new Uint8Array(saltBuffer), iterations);
         groups.set(groupKey, { keyPromise, items: [] });
       }
 
@@ -254,20 +274,20 @@ export class CryptoEngine {
         const groupResults = await pMap(
           group.items,
           async ({ item, index }) => {
-            const ivBuffer = Buffer.from(item.iv, "base64");
-            const ciphertextBuffer = Buffer.from(item.ciphertext, "base64");
-            const authTagBuffer = Buffer.from(item.authTag, "base64");
+            const ivBuffer = CryptoEngine.base64ToArrayBuffer(item.iv);
+            const ciphertextBuffer = CryptoEngine.base64ToArrayBuffer(item.ciphertext);
+            const authTagBuffer = CryptoEngine.base64ToArrayBuffer(item.authTag);
 
             // Reconstruct the encrypted payload (ciphertext + authTag)
             const encryptedDataBuffer = new Uint8Array(
-              ciphertextBuffer.length + authTagBuffer.length
+              ciphertextBuffer.byteLength + authTagBuffer.byteLength
             );
-            encryptedDataBuffer.set(ciphertextBuffer, 0);
-            encryptedDataBuffer.set(authTagBuffer, ciphertextBuffer.length);
+            encryptedDataBuffer.set(new Uint8Array(ciphertextBuffer), 0);
+            encryptedDataBuffer.set(new Uint8Array(authTagBuffer), ciphertextBuffer.byteLength);
 
             try {
               const decryptedBuffer = await crypto.subtle.decrypt(
-                { name: CryptoEngine.ALGORITHM, iv: ivBuffer },
+                { name: CryptoEngine.ALGORITHM, iv: new Uint8Array(ivBuffer) },
                 key,
                 encryptedDataBuffer
               );
@@ -285,7 +305,10 @@ export class CryptoEngine {
         }
       },
       // We run groups sequentially or concurrently, but typically there's only 1 group
-      { concurrency: options?.concurrency ?? Infinity }
+      { 
+        concurrency: options?.concurrency ?? Infinity,
+        disableCache: options?.disableCache ?? false
+      }
     );
 
     return results;
@@ -298,7 +321,10 @@ export class CryptoEngine {
     return CryptoEngine.decryptBatch(
       encryptedItems, 
       masterPassword, 
-      { concurrency: this.options.concurrency }
+      { 
+        concurrency: this.options.concurrency,
+        disableCache: this.options.disableCache
+      }
     );
   }
 

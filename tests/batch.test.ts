@@ -77,4 +77,30 @@ describe("CryptoEngine Batch Processing", () => {
     const decrypted = await CryptoEngine.decryptBatch([], masterPassword);
     expect(decrypted).toEqual([]);
   });
+
+  test("disabling cache results in unique salts", async () => {
+    const iterations = 10000;
+    const encryptedItems = await CryptoEngine.encryptBatch(items, masterPassword, iterations, { disableCache: true });
+
+    expect(encryptedItems.length).toBe(items.length);
+
+    // Verify each item has a unique salt
+    const salts = new Set(encryptedItems.map(i => i.salt));
+    expect(salts.size).toBe(items.length);
+
+    // Verify we can still decrypt them
+    const decryptedItems = await CryptoEngine.decryptBatch<(typeof items)[0]>(encryptedItems, masterPassword, { disableCache: true });
+    expect(decryptedItems).toEqual(items);
+  });
+
+  test("instance with disableCache works", async () => {
+    const engine = new CryptoEngine({ iterations: 10000, disableCache: true });
+    const encryptedItems = await engine.encryptBatch(items, masterPassword);
+
+    const salts = new Set(encryptedItems.map(i => i.salt));
+    expect(salts.size).toBe(items.length);
+
+    const decryptedItems = await engine.decryptBatch(encryptedItems, masterPassword);
+    expect(decryptedItems).toEqual(items);
+  });
 });
