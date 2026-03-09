@@ -131,19 +131,30 @@ When encrypting or decrypting multiple items, use the batch methods. They automa
 ```typescript
 const items = [{ id: 1 }, { id: 2 }, { id: 3 }];
 
-// Encrypt multiple items iteratively with a concurrency limit
+// Encrypt multiple items iteratively with a concurrency limit and progress tracking
 const encryptedBatch = await CryptoEngine.encryptBatch(
   items, 
   "master-password", 
   600000, 
-  { concurrency: 5 }
+  { 
+    concurrency: 5,
+    onProgress: (processed, total) => {
+      console.log(`Encrypted ${processed} of ${total} items`);
+    }
+  }
 );
 
 // Decrypt the batch
 const decryptedBatch = await CryptoEngine.decryptBatch(
   encryptedBatch, 
   "master-password", 
-  { concurrency: 5, disableCache: false } // disableCache is false by default
+  { 
+    concurrency: 5, 
+    disableCache: false, // disableCache is false by default
+    onProgress: (processed, total) => {
+      console.log(`Decrypted ${processed} of ${total} items`);
+    }
+  } 
 );
 ```
 
@@ -163,7 +174,11 @@ const encryptedBatch = await CryptoEngine.encryptBatch(
 #### Instance Approach
 
 ```typescript
-const crypto = new CryptoEngine({ iterations: 100000, concurrency: 5 });
+const crypto = new CryptoEngine({ 
+  iterations: 100000, 
+  concurrency: 5,
+  onProgress: (processed, total) => console.log(`Progress: ${processed}/${total}`) 
+});
 const items = [{ id: 1 }, { id: 2 }, { id: 3 }];
 
 const encryptedBatch = await crypto.encryptBatch(items, "master-password");
