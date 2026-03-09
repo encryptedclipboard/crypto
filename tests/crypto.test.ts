@@ -116,4 +116,33 @@ describe("CryptoEngine", () => {
     );
     expect(isFailed).toBe(false);
   });
+
+  test("work with short passwords", async () => {
+    const shortPassword = "123";
+    const data = { secret: "short" };
+    const encrypted = await CryptoEngine.encryptData(data, shortPassword);
+    const decrypted = await CryptoEngine.decryptData(encrypted, shortPassword);
+    expect(decrypted).toEqual(data);
+  });
+
+  test("throwing error when password is missing", async () => {
+    const data = { secret: "test" };
+    
+    // Encrypt
+    try {
+      await CryptoEngine.encryptData(data, "");
+      expect(true).toBe(false);
+    } catch (e) {
+      expect((e as Error).message).toBe("Master password is required for encryption.");
+    }
+
+    // Decrypt
+    const encrypted = await CryptoEngine.encryptData(data, "pass");
+    try {
+      await CryptoEngine.decryptData(encrypted, "");
+      expect(true).toBe(false);
+    } catch (e) {
+      expect((e as Error).message).toBe("Master password is required for decryption.");
+    }
+  });
 });

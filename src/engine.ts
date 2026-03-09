@@ -88,8 +88,8 @@ export class CryptoEngine {
     masterPassword: string,
     iterations: number = this.PBKDF2_ITERATIONS
   ): Promise<EncryptedData> {
-    if (!masterPassword || masterPassword.length < 8) {
-      throw new Error("Master password must be at least 8 characters long.");
+    if (!masterPassword) {
+      throw new Error("Master password is required for encryption.");
     }
 
     let plaintext: string;
