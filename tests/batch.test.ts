@@ -103,4 +103,29 @@ describe("CryptoEngine Batch Processing", () => {
     const decryptedItems = await engine.decryptBatch(encryptedItems, masterPassword);
     expect(decryptedItems).toEqual(items);
   });
+
+  test("onProgress callback is called correctly", async () => {
+    let encryptProgressCount = 0;
+    const encryptedItems = await CryptoEngine.encryptBatch(items, masterPassword, 10000, {
+      onProgress: (processed, total) => {
+        encryptProgressCount++;
+        expect(processed).toBe(encryptProgressCount);
+        expect(total).toBe(items.length);
+      }
+    });
+
+    expect(encryptProgressCount).toBe(items.length);
+
+    let decryptProgressCount = 0;
+    const decryptedItems = await CryptoEngine.decryptBatch<(typeof items)[0]>(encryptedItems, masterPassword, {
+      onProgress: (processed, total) => {
+        decryptProgressCount++;
+        expect(processed).toBe(decryptProgressCount);
+        expect(total).toBe(items.length);
+      }
+    });
+
+    expect(decryptProgressCount).toBe(items.length);
+    expect(decryptedItems).toEqual(items);
+  });
 });

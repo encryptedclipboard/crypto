@@ -16,6 +16,8 @@ export interface BatchOptions {
   concurrency?: number;
   /** Whether to disable salt/key caching for the batch. Defaults to false. */
   disableCache?: boolean;
+  /** Callback executed after each item is processed in the batch. */
+  onProgress?: (processed: number, total: number) => void;
 }
 
 export interface PasswordStrength {
