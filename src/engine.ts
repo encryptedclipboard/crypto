@@ -19,9 +19,8 @@ export class CryptoEngine {
     this.options = {
       iterations: options.iterations || CryptoEngine.PBKDF2_ITERATIONS,
       concurrency: options.concurrency || Infinity,
-      disableCache: options.disableCache || false,
-      onProgress: options.onProgress || (() => {})
-    };
+      disableCache: options.disableCache || false
+    } as Required<CryptoEngineOptions>;
   }
 
   private static arrayBufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
@@ -223,22 +222,22 @@ export class CryptoEngine {
     );
   }
 
-    async encryptBatch(
-      items: unknown[],
-      masterPassword: string,
-      options?: BatchOptions
-    ): Promise<EncryptedData[]> {
-      return CryptoEngine.encryptBatch(
-        items, 
-        masterPassword, 
-        this.options.iterations, 
-        { 
-          concurrency: options?.concurrency ?? this.options.concurrency,
-          disableCache: options?.disableCache ?? this.options.disableCache,
-          onProgress: options?.onProgress ?? this.options.onProgress
-        }
-      );
-    }
+  async encryptBatch(
+    items: unknown[],
+    masterPassword: string,
+    options?: BatchOptions
+  ): Promise<EncryptedData[]> {
+    return CryptoEngine.encryptBatch(
+      items, 
+      masterPassword, 
+      this.options.iterations, 
+      { 
+        concurrency: options?.concurrency ?? this.options.concurrency,
+        disableCache: options?.disableCache ?? this.options.disableCache,
+        onProgress: options?.onProgress
+      }
+    );
+  }
   /**
    * Decrypts a batch of items concurrently.
    * Groups items by salt/iterations to derive the key only once per unique group.
@@ -345,21 +344,21 @@ export class CryptoEngine {
   
       return results;
     }
-    async decryptBatch<T = unknown>(
-      encryptedItems: EncryptedData[],
-      masterPassword: string,
-      options?: BatchOptions
-    ): Promise<T[]> {
-      return CryptoEngine.decryptBatch(
-        encryptedItems, 
-        masterPassword, 
-        { 
-          concurrency: options?.concurrency ?? this.options.concurrency,
-          disableCache: options?.disableCache ?? this.options.disableCache,
-          onProgress: options?.onProgress ?? this.options.onProgress
-        }
-      );
-    }
+  async decryptBatch<T = unknown>(
+    encryptedItems: EncryptedData[],
+    masterPassword: string,
+    options?: BatchOptions
+  ): Promise<T[]> {
+    return CryptoEngine.decryptBatch(
+      encryptedItems, 
+      masterPassword, 
+      { 
+        concurrency: options?.concurrency ?? this.options.concurrency,
+        disableCache: options?.disableCache ?? this.options.disableCache,
+        onProgress: options?.onProgress
+      }
+    );
+  }
   // =========================================================================
   // SINGLE ITEM ENCRYPTION / DECRYPTION LOGIC
   // =========================================================================

@@ -176,13 +176,16 @@ const encryptedBatch = await CryptoEngine.encryptBatch(
 ```typescript
 const crypto = new CryptoEngine({ 
   iterations: 100000, 
-  concurrency: 5,
-  onProgress: (processed, total) => console.log(`Progress: ${processed}/${total}`) 
+  concurrency: 5
 });
 const items = [{ id: 1 }, { id: 2 }, { id: 3 }];
 
-const encryptedBatch = await crypto.encryptBatch(items, "master-password");
-const decryptedBatch = await crypto.decryptBatch(encryptedBatch, "master-password");
+const encryptedBatch = await crypto.encryptBatch(items, "master-password", {
+  onProgress: (processed, total) => console.log(`Encrypting: ${processed}/${total}`) 
+});
+const decryptedBatch = await crypto.decryptBatch(encryptedBatch, "master-password", {
+  onProgress: (processed, total) => console.log(`Decrypting: ${processed}/${total}`) 
+});
 ```
 
 ### PIN-based Encryption
