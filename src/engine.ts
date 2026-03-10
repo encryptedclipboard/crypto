@@ -8,7 +8,7 @@ import { pMap } from "./utils";
 
 export class CryptoEngine {
   private static readonly ALGORITHM = "AES-GCM";
-  private static readonly PBKDF2_ITERATIONS = 600000;
+  private static readonly PBKDF2_ITERATIONS = 400000;
   private static readonly SALT_LENGTH = 32;
   private static readonly IV_LENGTH = 12;
   private static readonly KEY_LENGTH = 256;
@@ -186,7 +186,7 @@ export class CryptoEngine {
     const salt = crypto.getRandomValues(
       new Uint8Array(CryptoEngine.SALT_LENGTH)
     );
-    
+
     const key = await CryptoEngine.deriveKeyFromPassword(
       masterPassword,
       salt,

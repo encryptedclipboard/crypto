@@ -11,7 +11,7 @@ This package is the core encryption engine of the [Encrypted Clipboard Manager](
 ## 🚀 Features
 
 - **Standardized Encryption**: Uses industry-standard **AES-256-GCM** for high-performance authenticated encryption.
-- **Robust Key Derivation**: Implements **PBKDF2** with a default of **600,000 iterations** (OWASP recommendation), customizable based on security vs. performance needs.
+- **Robust Key Derivation**: Implements **PBKDF2** with a default of **400,000 iterations** (OWASP recommendation), customizable based on security vs. performance needs.
 - **Hybrid API**: Seamless support for both static utility methods and pre-configured class instances.
 - **Zero Dependencies**: Built entirely on top of the native **Web Crypto API**, ensuring maximum security and a tiny footprint.
 - **Unified Logic**: Shared between the server, client (web), and browser extension for consistent E2E stability.
@@ -98,7 +98,7 @@ Since this library has **zero dependencies** and uses the native Web Crypto API,
     "Hello world",
     "my-password"
   );
-  
+
   console.log("Encrypted:", encrypted);
 </script>
 ```
@@ -138,7 +138,7 @@ const items = [{ id: 1 }, { id: 2 }, { id: 3 }];
 const encryptedBatch = await CryptoEngine.encryptBatch(
   items,
   "master-password",
-  600000,
+  400000,
   {
     concurrency: 5,
     onProgress: (processed, total) => {
@@ -169,7 +169,7 @@ By default, batch operations generate a single salt/key for the entire batch to 
 const encryptedBatch = await CryptoEngine.encryptBatch(
   items,
   "master-password",
-  600000,
+  400000,
   { disableCache: true }
 );
 ```
@@ -226,7 +226,7 @@ const originalPassword = await crypto.decryptPasswordWithPin(encryptedPassword, 
 - **Key Length**: 256 bits
 - **KDF**: `PBKDF2` (Password-Based Key Derivation Function 2)
 - **Hash**: `SHA-256`
-- **Iterations**: 600,000 (Default, Customizable)
+- **Iterations**: 400,000 (Default, Customizable)
 - **Salt Length**: 256 bits (32 bytes)
 - **IV Length**: 96 bits (12 bytes)
 
