@@ -186,6 +186,7 @@ export class CryptoEngine {
     const salt = crypto.getRandomValues(
       new Uint8Array(CryptoEngine.SALT_LENGTH)
     );
+    
     const key = await CryptoEngine.deriveKeyFromPassword(
       masterPassword,
       salt,
@@ -228,10 +229,10 @@ export class CryptoEngine {
     options?: BatchOptions
   ): Promise<EncryptedData[]> {
     return CryptoEngine.encryptBatch(
-      items, 
-      masterPassword, 
-      this.options.iterations, 
-      { 
+      items,
+      masterPassword,
+      this.options.iterations,
+      {
         concurrency: options?.concurrency ?? this.options.concurrency,
         disableCache: options?.disableCache ?? this.options.disableCache,
         onProgress: options?.onProgress
@@ -252,7 +253,7 @@ export class CryptoEngine {
       options?: BatchOptions
     ): Promise<T[]> {
       if (!encryptedItems || encryptedItems.length === 0) return [];
-  
+
       let processedCount = 0;
       const totalCount = encryptedItems.length;
       const reportProgress = () => {
@@ -261,7 +262,7 @@ export class CryptoEngine {
           options.onProgress(processedCount, totalCount);
         }
       };
-  
+
       if (options?.disableCache) {
         return pMap(
           encryptedItems,
@@ -273,28 +274,28 @@ export class CryptoEngine {
           options
         );
       }
-  
+
       // Group items by salt and iterations to minimize key derivations
       // We use a string key: `${saltBase64}_${iterations}`
       const groups = new Map<string, { keyPromise: Promise<CryptoKey>; items: { item: EncryptedData, index: number }[] }>();
-  
+
       for (let i = 0; i < encryptedItems.length; i++) {
         const item = encryptedItems[i];
         const iterations = item.iterations || CryptoEngine.PBKDF2_ITERATIONS;
         const groupKey = `${item.salt}_${iterations}`;
-  
+
         if (!groups.has(groupKey)) {
           const saltBuffer = CryptoEngine.base64ToArrayBuffer(item.salt);
           // Start promise immediately but store it
           const keyPromise = CryptoEngine.deriveKeyFromPassword(masterPassword, new Uint8Array(saltBuffer), iterations);
           groups.set(groupKey, { keyPromise, items: [] });
         }
-  
+
         groups.get(groupKey)!.items.push({ item, index: i });
       }
-  
+
       const results: T[] = new Array(encryptedItems.length);
-  
+
       // Process each group concurrently using pMap if there are many items per group
       await pMap(
         Array.from(groups.values()),
@@ -306,14 +307,14 @@ export class CryptoEngine {
               const ivBuffer = CryptoEngine.base64ToArrayBuffer(item.iv);
               const ciphertextBuffer = CryptoEngine.base64ToArrayBuffer(item.ciphertext);
               const authTagBuffer = CryptoEngine.base64ToArrayBuffer(item.authTag);
-  
+
               // Reconstruct the encrypted payload (ciphertext + authTag)
               const encryptedDataBuffer = new Uint8Array(
                 ciphertextBuffer.byteLength + authTagBuffer.byteLength
               );
               encryptedDataBuffer.set(new Uint8Array(ciphertextBuffer), 0);
               encryptedDataBuffer.set(new Uint8Array(authTagBuffer), ciphertextBuffer.byteLength);
-  
+
               try {
                 const decryptedBuffer = await crypto.subtle.decrypt(
                   { name: CryptoEngine.ALGORITHM, iv: new Uint8Array(ivBuffer) },
@@ -329,19 +330,19 @@ export class CryptoEngine {
             },
             options
           );
-          
+
           // Place results back in original order
           for (const res of groupResults) {
             results[res.index] = res.value;
           }
         },
         // We run groups sequentially or concurrently, but typically there's only 1 group
-        { 
+        {
           concurrency: options?.concurrency ?? Infinity,
           disableCache: options?.disableCache ?? false
         }
       );
-  
+
       return results;
     }
   async decryptBatch<T = unknown>(
@@ -350,9 +351,9 @@ export class CryptoEngine {
     options?: BatchOptions
   ): Promise<T[]> {
     return CryptoEngine.decryptBatch(
-      encryptedItems, 
-      masterPassword, 
-      { 
+      encryptedItems,
+      masterPassword,
+      {
         concurrency: options?.concurrency ?? this.options.concurrency,
         disableCache: options?.disableCache ?? this.options.disableCache,
         onProgress: options?.onProgress

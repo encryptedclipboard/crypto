@@ -98,6 +98,7 @@ Since this library has **zero dependencies** and uses the native Web Crypto API,
     "Hello world",
     "my-password"
   );
+  
   console.log("Encrypted:", encrypted);
 </script>
 ```
@@ -109,7 +110,9 @@ Since this library has **zero dependencies** and uses the native Web Crypto API,
   import { CryptoEngine } from "https://esm.sh/@encryptedclipboard/crypto";
 
   const crypto = new CryptoEngine({ iterations: 100000 });
+
   const encrypted = await crypto.encryptData("Hello world", "my-password");
+
   console.log("Encrypted:", encrypted);
 </script>
 ```
@@ -133,10 +136,10 @@ const items = [{ id: 1 }, { id: 2 }, { id: 3 }];
 
 // Encrypt multiple items iteratively with a concurrency limit and progress tracking
 const encryptedBatch = await CryptoEngine.encryptBatch(
-  items, 
-  "master-password", 
-  600000, 
-  { 
+  items,
+  "master-password",
+  600000,
+  {
     concurrency: 5,
     onProgress: (processed, total) => {
       console.log(`Encrypted ${processed} of ${total} items`);
@@ -146,15 +149,15 @@ const encryptedBatch = await CryptoEngine.encryptBatch(
 
 // Decrypt the batch
 const decryptedBatch = await CryptoEngine.decryptBatch(
-  encryptedBatch, 
-  "master-password", 
-  { 
-    concurrency: 5, 
+  encryptedBatch,
+  "master-password",
+  {
+    concurrency: 5,
     disableCache: false, // disableCache is false by default
     onProgress: (processed, total) => {
       console.log(`Decrypted ${processed} of ${total} items`);
     }
-  } 
+  }
 );
 ```
 
@@ -164,9 +167,9 @@ By default, batch operations generate a single salt/key for the entire batch to 
 
 ```typescript
 const encryptedBatch = await CryptoEngine.encryptBatch(
-  items, 
-  "master-password", 
-  600000, 
+  items,
+  "master-password",
+  600000,
   { disableCache: true }
 );
 ```
@@ -174,17 +177,19 @@ const encryptedBatch = await CryptoEngine.encryptBatch(
 #### Instance Approach
 
 ```typescript
-const crypto = new CryptoEngine({ 
-  iterations: 100000, 
+const crypto = new CryptoEngine({
+  iterations: 100000,
   concurrency: 5
 });
+
 const items = [{ id: 1 }, { id: 2 }, { id: 3 }];
 
 const encryptedBatch = await crypto.encryptBatch(items, "master-password", {
-  onProgress: (processed, total) => console.log(`Encrypting: ${processed}/${total}`) 
+  onProgress: (processed, total) => console.log(`Encrypting: ${processed}/${total}`)
 });
+
 const decryptedBatch = await crypto.decryptBatch(encryptedBatch, "master-password", {
-  onProgress: (processed, total) => console.log(`Decrypting: ${processed}/${total}`) 
+  onProgress: (processed, total) => console.log(`Decrypting: ${processed}/${total}`)
 });
 ```
 
@@ -199,6 +204,7 @@ const encryptedPassword = await CryptoEngine.encryptPasswordWithPin(
   "master-password",
   "1234"
 );
+
 const originalPassword = await CryptoEngine.decryptPasswordWithPin(
   encryptedPassword,
   "1234"
