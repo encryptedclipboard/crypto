@@ -220,6 +220,39 @@ const encryptedPassword = await crypto.encryptPasswordWithPin("master-password",
 const originalPassword = await crypto.decryptPasswordWithPin(encryptedPassword, "1234");
 ```
 
+### Raw Key Support
+
+For high-performance scenarios (e.g., Web Workers or repeated operations), you can derive the raw PBKDF2 key once and reuse it for multiple encryption/decryption operations. This avoids the overhead of repeated key derivation.
+
+#### Derived Raw Key Usage
+
+```typescript
+const salt = crypto.getRandomValues(new Uint8Array(32));
+const iterations = 400000;
+
+// 1. Generate the raw key buffer (Uint8Array/ArrayBuffer)
+const rawKey = await CryptoEngine.generateRawKey(masterPassword, salt, iterations);
+
+// 2. Encrypt using the raw key
+const encrypted = await CryptoEngine.encryptWithRawKey(data, rawKey, salt, iterations);
+
+// 3. Decrypt using the raw key
+const decrypted = await CryptoEngine.decryptWithRawKey(encrypted, rawKey);
+```
+
+#### Instance Approach
+
+```typescript
+const crypto = new CryptoEngine({ iterations: 400000 });
+const salt = crypto.getRandomValues(new Uint8Array(32));
+
+const rawKey = await CryptoEngine.generateRawKey(masterPassword, salt);
+
+// Iterations are handled by the instance
+const encrypted = await crypto.encryptWithRawKey(data, rawKey, salt);
+const decrypted = await crypto.decryptWithRawKey(encrypted, rawKey);
+```
+
 ## 🔐 Security Specifications
 
 - **Algorithm**: `AES-GCM` (Advanced Encryption Standard - Galois/Counter Mode)
