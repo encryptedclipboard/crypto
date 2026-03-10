@@ -11,7 +11,7 @@ This package is the core encryption engine of the [Encrypted Clipboard Manager](
 ## 🚀 Features
 
 - **Standardized Encryption**: Uses industry-standard **AES-256-GCM** for high-performance authenticated encryption.
-- **Robust Key Derivation**: Implements **PBKDF2** with a default of **400,000 iterations** (OWASP recommendation), customizable based on security vs. performance needs.
+- **Robust Key Derivation**: Implements **PBKDF2** with a default of **400,000 iterations** (to have a balance between speed and security), customizable based on security vs. performance needs.
 - **Hybrid API**: Seamless support for both static utility methods and pre-configured class instances.
 - **Zero Dependencies**: Built entirely on top of the native **Web Crypto API**, ensuring maximum security and a tiny footprint.
 - **Unified Logic**: Shared between the server, client (web), and browser extension for consistent E2E stability.
