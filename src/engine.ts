@@ -83,6 +83,48 @@ export class CryptoEngine {
     );
   }
 
+  static async generateRawKey(
+    password: string,
+    salt: Uint8Array,
+    iterations: number = CryptoEngine.PBKDF2_ITERATIONS
+  ): Promise<ArrayBuffer> {
+    const encoder = new TextEncoder();
+    const passwordBuffer = encoder.encode(password);
+
+    const keyMaterial = await crypto.subtle.importKey(
+      "raw",
+      passwordBuffer,
+      "PBKDF2",
+      false,
+      ["deriveKey"]
+    );
+
+    const key = await crypto.subtle.deriveKey(
+      {
+        name: "PBKDF2",
+        salt: salt as BufferSource,
+        iterations: iterations,
+        hash: "SHA-256"
+      },
+      keyMaterial,
+      { name: "AES-GCM", length: this.KEY_LENGTH },
+      true,
+      ["encrypt", "decrypt"]
+    );
+
+    return crypto.subtle.exportKey("raw", key);
+  }
+
+  static async importRawKey(rawKey: ArrayBuffer): Promise<CryptoKey> {
+    return crypto.subtle.importKey(
+      "raw",
+      rawKey,
+      { name: "AES-GCM" },
+      false,
+      ["encrypt", "decrypt"]
+    );
+  }
+
   static async encryptData(
     data: unknown,
     masterPassword: string,
@@ -139,6 +181,61 @@ export class CryptoEngine {
     masterPassword: string
   ): Promise<EncryptedData> {
     return CryptoEngine.encryptData(data, masterPassword, this.options.iterations);
+  }
+
+  static async encryptWithRawKey(
+    data: unknown,
+    rawKey: ArrayBuffer,
+    salt: Uint8Array,
+    iterations: number = this.PBKDF2_ITERATIONS
+  ): Promise<EncryptedData> {
+    let plaintext: string;
+    try {
+      plaintext = typeof data === "string" ? data : JSON.stringify(data);
+    } catch {
+      throw new Error("Failed to serialize data for encryption.");
+    }
+
+    const plaintextBytes = new TextEncoder().encode(plaintext);
+    const key = await this.importRawKey(rawKey);
+    const iv = crypto.getRandomValues(new Uint8Array(this.IV_LENGTH));
+
+    const encryptedBuffer = await crypto.subtle.encrypt(
+      {
+        name: "AES-GCM",
+        iv,
+        tagLength: 128
+      },
+      key,
+      plaintextBytes
+    );
+
+    const encryptedArray = new Uint8Array(encryptedBuffer);
+    const totalLen = encryptedArray.length;
+    const ciphertext = new Uint8Array(encryptedBuffer, 0, totalLen - 16);
+    const authTag = new Uint8Array(encryptedBuffer, totalLen - 16, 16);
+
+    return {
+      ciphertext: this.arrayBufferToBase64(ciphertext),
+      iv: this.arrayBufferToBase64(iv),
+      salt: this.arrayBufferToBase64(salt),
+      authTag: this.arrayBufferToBase64(authTag),
+      iterations,
+      version: 1
+    };
+  }
+
+  async encryptWithRawKey(
+    data: unknown,
+    rawKey: ArrayBuffer,
+    salt: Uint8Array
+  ): Promise<EncryptedData> {
+    return CryptoEngine.encryptWithRawKey(
+      data,
+      rawKey,
+      salt,
+      this.options.iterations
+    );
   }
 
   // =========================================================================
@@ -433,6 +530,55 @@ export class CryptoEngine {
     } catch {
       return false;
     }
+  }
+
+  static async decryptWithRawKey<T = unknown>(
+    encryptedData: EncryptedData,
+    rawKey: ArrayBuffer
+  ): Promise<T> {
+    const iv = new Uint8Array(this.base64ToArrayBuffer(encryptedData.iv));
+    const ciphertext = new Uint8Array(
+      this.base64ToArrayBuffer(encryptedData.ciphertext)
+    );
+    const authTag = new Uint8Array(
+      this.base64ToArrayBuffer(encryptedData.authTag)
+    );
+
+    const key = await this.importRawKey(rawKey);
+
+    const encryptedBuffer = new Uint8Array(ciphertext.length + authTag.length);
+    encryptedBuffer.set(ciphertext, 0);
+    encryptedBuffer.set(authTag, ciphertext.length);
+
+    try {
+      const decryptedBuffer = await crypto.subtle.decrypt(
+        {
+          name: "AES-GCM",
+          iv,
+          tagLength: 128
+        },
+        key,
+        encryptedBuffer
+      );
+
+      const plaintext = new TextDecoder().decode(decryptedBuffer);
+      try {
+        return JSON.parse(plaintext) as T;
+      } catch {
+        return plaintext as unknown as T;
+      }
+    } catch {
+      throw new Error(
+        "Failed to decrypt data using raw key. Corrupted data or invalid key."
+      );
+    }
+  }
+
+  async decryptWithRawKey<T = unknown>(
+    encryptedData: EncryptedData,
+    rawKey: ArrayBuffer
+  ): Promise<T> {
+    return CryptoEngine.decryptWithRawKey<T>(encryptedData, rawKey);
   }
 
   async tryDecrypt(
