@@ -25,3 +25,12 @@ export interface PasswordStrength {
   feedback: string[];
   isStrong: boolean;
 }
+
+export interface EncryptDataOptions {
+  /** Optional salt for key derivation. If not provided, a random 32-byte salt will be generated. */
+  salt?: Uint8Array;
+  /** Optional IV for encryption. If not provided, a random 12-byte IV will be generated. */
+  iv?: Uint8Array;
+  /** Number of PBKDF2 iterations. Defaults to 400000. */
+  iterations?: number;
+}

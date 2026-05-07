@@ -2,7 +2,8 @@ import type {
   CryptoEngineOptions,
   EncryptedData,
   PasswordStrength,
-  BatchOptions
+  BatchOptions,
+  EncryptDataOptions
 } from "./types";
 import { pMap } from "./utils";
 
@@ -181,6 +182,73 @@ export class CryptoEngine {
     masterPassword: string
   ): Promise<EncryptedData> {
     return CryptoEngine.encryptData(data, masterPassword, this.options.iterations);
+  }
+
+  static async encryptDataWithCredentials(
+    data: unknown,
+    masterPassword: string,
+    options?: EncryptDataOptions
+  ): Promise<EncryptedData> {
+    if (!masterPassword) {
+      throw new Error("Master password is required for encryption.");
+    }
+
+    let plaintext: string;
+    try {
+      plaintext = typeof data === "string" ? data : JSON.stringify(data);
+    } catch {
+      throw new Error("Failed to serialize data for encryption.");
+    }
+
+    const plaintextBytes = new TextEncoder().encode(plaintext);
+    const salt = options?.salt ?? crypto.getRandomValues(new Uint8Array(this.SALT_LENGTH));
+    const iv = options?.iv ?? crypto.getRandomValues(new Uint8Array(this.IV_LENGTH));
+    const iterations = options?.iterations || this.PBKDF2_ITERATIONS;
+
+    const key = await this.deriveKeyFromPassword(
+      masterPassword,
+      salt,
+      iterations
+    );
+
+    const encryptedBuffer = await crypto.subtle.encrypt(
+      {
+        name: "AES-GCM",
+        iv: iv as BufferSource,
+        tagLength: 128
+      },
+      key,
+      plaintextBytes
+    );
+
+    const encryptedArray = new Uint8Array(encryptedBuffer);
+    const totalLen = encryptedArray.length;
+    const ciphertext = new Uint8Array(encryptedBuffer, 0, totalLen - 16);
+    const authTag = new Uint8Array(encryptedBuffer, totalLen - 16, 16);
+
+    return {
+      ciphertext: this.arrayBufferToBase64(ciphertext),
+      iv: this.arrayBufferToBase64(iv),
+      salt: this.arrayBufferToBase64(salt),
+      authTag: this.arrayBufferToBase64(authTag),
+      iterations,
+      version: 1
+    };
+  }
+
+  async encryptDataWithCredentials(
+    data: unknown,
+    masterPassword: string,
+    options?: EncryptDataOptions
+  ): Promise<EncryptedData> {
+    return CryptoEngine.encryptDataWithCredentials(
+      data,
+      masterPassword,
+      {
+        ...options,
+        iterations: options?.iterations || this.options.iterations
+      }
+    );
   }
 
   static async encryptWithRawKey(

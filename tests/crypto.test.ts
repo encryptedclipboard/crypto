@@ -127,7 +127,7 @@ describe("CryptoEngine", () => {
 
   test("throwing error when password is missing", async () => {
     const data = { secret: "test" };
-    
+
     // Encrypt
     try {
       await CryptoEngine.encryptData(data, "");
@@ -144,5 +144,71 @@ describe("CryptoEngine", () => {
     } catch (e) {
       expect((e as Error).message).toBe("Master password is required for decryption.");
     }
+  });
+
+  test("encryptDataWithCredentials with custom salt and iv", async () => {
+    const data1 = { format: "text/plain", content: "Hello World" };
+    const data2 = { format: "text/html", content: "<p>Hello World</p>" };
+
+    const salt = crypto.getRandomValues(new Uint8Array(32));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+
+    const encrypted1 = await CryptoEngine.encryptDataWithCredentials(data1, password, { salt, iv });
+    const encrypted2 = await CryptoEngine.encryptDataWithCredentials(data2, password, { salt, iv });
+
+    expect(encrypted1.salt).toBe(encrypted2.salt);
+    expect(encrypted1.iv).toBe(encrypted2.iv);
+
+    const decrypted1 = await CryptoEngine.decryptData(encrypted1, password);
+    const decrypted2 = await CryptoEngine.decryptData(encrypted2, password);
+
+    expect(decrypted1).toEqual(data1);
+    expect(decrypted2).toEqual(data2);
+  });
+
+  test("encryptDataWithCredentials without salt and iv generates random values", async () => {
+    const data = { secret: "test" };
+
+    const encrypted1 = await CryptoEngine.encryptDataWithCredentials(data, password);
+    const encrypted2 = await CryptoEngine.encryptDataWithCredentials(data, password);
+
+    expect(encrypted1.salt).not.toBe(encrypted2.salt);
+    expect(encrypted1.iv).not.toBe(encrypted2.iv);
+  });
+
+  test("encryptDataWithCredentials with only salt uses random iv", async () => {
+    const data = { secret: "test" };
+    const salt = crypto.getRandomValues(new Uint8Array(32));
+
+    const encrypted1 = await CryptoEngine.encryptDataWithCredentials(data, password, { salt });
+    const encrypted2 = await CryptoEngine.encryptDataWithCredentials(data, password, { salt });
+
+    expect(encrypted1.salt).toBe(encrypted2.salt);
+    expect(encrypted1.iv).not.toBe(encrypted2.iv);
+  });
+
+  test("encryptDataWithCredentials with only iv uses random salt", async () => {
+    const data = { secret: "test" };
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+
+    const encrypted1 = await CryptoEngine.encryptDataWithCredentials(data, password, { iv });
+    const encrypted2 = await CryptoEngine.encryptDataWithCredentials(data, password, { iv });
+
+    expect(encrypted1.salt).not.toBe(encrypted2.salt);
+    expect(encrypted1.iv).toBe(encrypted2.iv);
+  });
+
+  test("encryptDataWithCredentials with custom iterations", async () => {
+    const data = { secret: "test" };
+    const customIterations = 100000;
+
+    const encrypted = await CryptoEngine.encryptDataWithCredentials(data, password, {
+      iterations: customIterations
+    });
+
+    expect(encrypted.iterations).toBe(customIterations);
+
+    const decrypted = await CryptoEngine.decryptData(encrypted, password);
+    expect(decrypted).toEqual(data);
   });
 });

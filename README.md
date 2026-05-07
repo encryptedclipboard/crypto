@@ -125,6 +125,52 @@ console.log(assessment.isStrong); // boolean
 console.log(assessment.feedback); // Array of suggestions
 ```
 
+### Encrypting Multiple Items with Same Credentials
+
+Use `encryptDataWithCredentials` when you need to encrypt multiple pieces of data (e.g., different formats of the same clipboard item) with the same salt, IV, and key. This is useful when you want to store only one set of credentials per logical group of data.
+
+```typescript
+// Generate credentials once for the clipboard item
+const salt = crypto.getRandomValues(new Uint8Array(32));
+const iv = crypto.getRandomValues(new Uint8Array(12));
+
+// Encrypt all formats with the same credentials
+const encryptedText = await CryptoEngine.encryptDataWithCredentials(
+  clipboardItem.text,
+  masterPassword,
+  { salt, iv }
+);
+
+const encryptedHtml = await CryptoEngine.encryptDataWithCredentials(
+  clipboardItem.html,
+  masterPassword,
+  { salt, iv }
+);
+
+const encryptedRtf = await CryptoEngine.encryptDataWithCredentials(
+  clipboardItem.rtf,
+  masterPassword,
+  { salt, iv }
+);
+
+// Decrypt any of them
+const decryptedText = await CryptoEngine.decryptData(encryptedText, masterPassword);
+```
+
+#### Instance Approach
+
+```typescript
+const crypto = new CryptoEngine({ iterations: 400000 });
+
+const salt = crypto.getRandomValues(new Uint8Array(32));
+const iv = crypto.getRandomValues(new Uint8Array(12));
+
+const encrypted1 = await crypto.encryptDataWithCredentials(data1, masterPassword, { salt, iv });
+const encrypted2 = await crypto.encryptDataWithCredentials(data2, masterPassword, { salt, iv });
+```
+
+> **Note**: When encrypting multiple items with the same credentials, each item will have a unique ciphertext, but they'll share the same `salt` and `iv` values in their encrypted output.
+
 ### High-Performance Batch Processing
 
 When encrypting or decrypting multiple items, use the batch methods. They automatically cache the derived key (salt) for the entire batch and use a builtin concurrency controller, drastically improving performance compared to a simple `Promise.all`.
